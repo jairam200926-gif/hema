@@ -94,3 +94,67 @@ export async function apiRequest<T>(
 
   if (options.body && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
+  }
+
+  const response = await fetch(url, {
+    ...options,
+    headers,
+  });
+
+  const contentType = response.headers.get("content-type") || "";
+  let payload: any = null;
+
+  if (contentType.includes("application/json")) {
+    payload = await response.json().catch(() => null);
+  } else if (response.status !== 204) {
+    payload = await response.text().catch(() => "");
+  }
+
+  if (!response.ok) {
+    const message = formatErrorDetail(payload || response.statusText);
+    throw new Error(message || `Request failed with status ${response.status}`);
+  }
+
+  return (payload ?? (response.status === 204 ? ({} as T) : undefined)) as T;
+}
+
+export const apiGet = <T>(path: string, options: RequestInit = {}): Promise<T> =>
+  apiRequest<T>(path, { ...options, method: "GET" });
+
+export const apiPost = <T>(
+  path: string,
+  body?: unknown,
+  options: RequestInit = {}
+): Promise<T> =>
+  apiRequest<T>(path, {
+    ...options,
+    method: "POST",
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+
+export const apiPut = <T>(
+  path: string,
+  body?: unknown,
+  options: RequestInit = {}
+): Promise<T> =>
+  apiRequest<T>(path, {
+    ...options,
+    method: "PUT",
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+
+export const apiPatch = <T>(
+  path: string,
+  body?: unknown,
+  options: RequestInit = {}
+): Promise<T> =>
+  apiRequest<T>(path, {
+    ...options,
+    method: "PATCH",
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+
+export const apiDelete = <T>(
+  path: string,
+  options: RequestInit = {}
+): Promise<T> => apiRequest<T>(path, { ...options, method: "DELETE" });
