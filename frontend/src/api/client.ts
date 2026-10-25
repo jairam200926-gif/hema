@@ -4,7 +4,7 @@
  * Base URL is read from VITE_API_BASE env var with a fallback for local dev.
  */
 
-const DEFAULT_BASE_URL = "https://hema-lac.vercel.app/";
+const DEFAULT_BASE_URL = "https://hema-xdhr-hndakgek.onslate.in/";
 
 // Vite injects environment variables prefixed with VITE_ at build time.
 export const API_BASE_URL: string =
