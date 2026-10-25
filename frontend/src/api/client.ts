@@ -1,4 +1,4 @@
-const DEFAULT_BASE_URL = "https://hema-msveqsht.onslate.in";
+const DEFAULT_BASE_URL = "https://backend-seven-brown-67.vercel.app/";
 
 export const API_BASE_URL = (
   import.meta.env.VITE_API_BASE || DEFAULT_BASE_URL
