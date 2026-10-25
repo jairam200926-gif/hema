@@ -1,17 +1,14 @@
-/**
- * Minimal API client for VaultGuard frontend.
- * Uses the native fetch API (Axios is not a project dependency).
- * Base URL is read from VITE_API_BASE env var with a fallback for local dev.
- */
-
 const DEFAULT_BASE_URL = "https://hema-msveqsht.onslate.in";
 
-// Vite injects environment variables prefixed with VITE_ at build time.
-export const API_BASE_URL: string =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE) || DEFAULT_BASE_URL;
+export const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE || DEFAULT_BASE_URL
+).replace(/\/+$/, "");
 
 export function getStoredToken(): string | null {
-  return localStorage.getItem("vaultguard_token") || localStorage.getItem("vg_token");
+  return (
+    localStorage.getItem("vaultguard_token") ||
+    localStorage.getItem("vg_token")
+  );
 }
 
 export function setStoredToken(token: string | null): void {
@@ -23,39 +20,45 @@ export function setStoredToken(token: string | null): void {
   }
 }
 
-/**
- * Helper to create a Bearer Authorization header.
- * The caller supplies the JWT token (e.g., from localStorage).
- */
 export function authHeader(token?: string): HeadersInit {
   const activeToken = token || getStoredToken();
+
   return activeToken
-    ? {
-        Authorization: `Bearer ${activeToken}`,
-      }
+    ? { Authorization: `Bearer ${activeToken}` }
     : {};
 }
 
-/**
- * Formats API errors (including FastAPI/Pydantic validation details) into readable strings.
- */
 export function formatErrorDetail(detail: any): string {
   if (!detail) return "";
-  if (typeof detail === "string") return detail;
+
+  if (typeof detail === "string") {
+    return detail;
+  }
 
   if (Array.isArray(detail)) {
     return detail
       .map((item) => {
         if (typeof item === "string") return item;
+
         if (item && typeof item === "object") {
-          const rawMsg = item.msg || item.message || "";
-          const cleanMsg = String(rawMsg).replace(/^Value error,\s*/i, "");
-          const locParts = Array.isArray(item.loc)
-            ? item.loc.filter((p: any) => p !== "body" && p !== "__root__")
+          const message = String(item.msg || item.message || "");
+          const cleanMessage = message.replace(
+            /^Value error,\s*/i,
+            ""
+          );
+
+          const location = Array.isArray(item.loc)
+            ? item.loc.filter(
+                (part: any) =>
+                  part !== "body" && part !== "__root__"
+              )
             : [];
-          const field = locParts.join(".");
-          return field ? `${field}: ${cleanMsg}` : cleanMsg;
+
+          return location.length
+            ? `${location.join(".")}: ${cleanMessage}`
+            : cleanMessage;
         }
+
         return String(item);
       })
       .filter(Boolean)
@@ -63,73 +66,115 @@ export function formatErrorDetail(detail: any): string {
   }
 
   if (typeof detail === "object") {
-    return detail.message || detail.msg || JSON.stringify(detail);
+    return (
+      detail.message ||
+      detail.msg ||
+      JSON.stringify(detail)
+    );
   }
 
   return String(detail);
 }
 
-/**
- * Generic request wrapper that returns the parsed JSON body.
- * Throws on non‑2xx responses with an error object containing `status` and the response payload.
- */
 export async function apiRequest<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  // Ensure the path starts with a slash when concatenated to the base URL.
-  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const normalizedPath = path.startsWith("/")
+    ? path
+    : `/${path}`;
+
   const url = `${API_BASE_URL}${normalizedPath}`;
 
+  const headers = new Headers(options.headers);
+
   const token = getStoredToken();
-  const headers = {
-    ...(token ? authHeader(token) : {}),
-    ...(options.headers || {}),
-  };
 
-  const response = await fetch(url, {
-    // The caller can override method, headers, body, etc.
-    ...options,
-    headers,
-    // Ensure credentials are sent for cookies if needed.
-    credentials: "include",
-  });
+  if (token && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
 
-  if (!response.ok) {
-    // Try to parse JSON error body; fall back to plain text.
-    let errorPayload: any;
-    try {
-      errorPayload = await response.json();
-    } catch {
-      errorPayload = { detail: await response.text() };
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers,
+      credentials: "include",
+    });
+
+    // Read the response body exactly once.
+    const responseText = await response.text();
+
+    let responseData: any = null;
+
+    if (responseText.trim()) {
+      try {
+        responseData = JSON.parse(responseText);
+      } catch {
+        responseData = responseText;
+      }
     }
 
-    const formattedDetail = formatErrorDetail(errorPayload?.detail);
-    const message = formattedDetail || errorPayload?.message || `Request failed with status ${response.status}`;
+    if (!response.ok) {
+      const detail =
+        typeof responseData === "object" && responseData !== null
+          ? responseData.detail
+          : responseData;
 
-    const error = {
-      status: response.status,
-      ...errorPayload,
-      detail: formattedDetail || message,
-      message,
-      rawDetail: errorPayload?.detail,
-    };
-    throw error;
+      const message =
+        formatErrorDetail(detail) ||
+        (typeof responseData === "object" && responseData !== null
+          ? responseData.message
+          : "") ||
+        `Request failed with status ${response.status}`;
+
+      throw new Error(
+        `${message} (HTTP ${response.status})`
+      );
+    }
+
+    // Successful response with no content.
+    if (response.status === 204 || !responseText.trim()) {
+      return null as T;
+    }
+
+    // Successful response should normally contain JSON.
+    if (typeof responseData === "string") {
+      throw new Error(
+        "The server returned a non-JSON response. Check the API URL and backend configuration."
+      );
+    }
+
+    return responseData as T;
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      // Preserve server errors instead of reporting every error as a network issue.
+      if (
+        error.message.includes("(HTTP ") ||
+        error.message.includes("non-JSON response")
+      ) {
+        throw error;
+      }
+
+      console.error("VaultGuard API request failed:", {
+        url,
+        error: error.message,
+      });
+
+      throw new Error(
+        `Unable to connect to the API at ${API_BASE_URL}. ` +
+          `Check that the backend is running, the API URL is correct, ` +
+          `and CORS allows your frontend domain. Details: ${error.message}`
+      );
+    }
+
+    throw new Error("An unexpected API error occurred.");
   }
-
-  // Handle 204 No Content
-  if (response.status === 204) {
-    return null as T;
-  }
-
-  // Successful response – parse JSON.
-  return (await response.json()) as T;
 }
 
-/**
- * Convenience helpers for common HTTP verbs.
- */
-export const apiGet = <T>(path: string, token?: string): Promise<T> =>
+export const apiGet = <T>(
+  path: string,
+  token?: string
+): Promise<T> =>
   apiRequest<T>(path, {
     method: "GET",
     headers: token ? authHeader(token) : undefined,
@@ -163,7 +208,10 @@ export const apiPut = <T>(
     body: JSON.stringify(body),
   });
 
-export const apiDelete = <T>(path: string, token?: string): Promise<T> =>
+export const apiDelete = <T>(
+  path: string,
+  token?: string
+): Promise<T> =>
   apiRequest<T>(path, {
     method: "DELETE",
     headers: token ? authHeader(token) : undefined,
