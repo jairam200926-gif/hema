@@ -1,0 +1,1 @@
+"""VaultGuard Backend — package root."""

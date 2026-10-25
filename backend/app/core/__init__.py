@@ -1,0 +1,1 @@
+"""VaultGuard — Core package init."""

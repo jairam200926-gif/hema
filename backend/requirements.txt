@@ -1,0 +1,34 @@
+# VaultGuard Backend — Python Dependencies
+# Pinned for reproducible prototype builds
+
+# ── Web Framework ──────────────────────────────────────────────────────────────
+fastapi==0.141.1
+uvicorn[standard]==0.34.0
+
+# ── Database / ORM ─────────────────────────────────────────────────────────────
+sqlalchemy==2.0.36
+alembic==1.14.1
+psycopg2-binary==2.9.10          # PostgreSQL driver (binary, no build required)
+
+# ── Validation / Settings ──────────────────────────────────────────────────────
+pydantic==2.10.6
+pydantic-settings==2.7.1
+python-multipart==0.0.20          # Form / file upload support
+email-validator==2.2.0
+
+# ── Authentication ─────────────────────────────────────────────────────────────
+pyjwt==2.10.1                     # JWT (HS256 strictly pinned)
+argon2-cffi==23.1.0               # Argon2id password hashing (RFC 9106)
+
+# ── Cryptography ───────────────────────────────────────────────────────────────
+cryptography==43.0.3              # AES-256-GCM via hazmat.primitives.ciphers.aead
+
+# ── Environment / Config ───────────────────────────────────────────────────────
+python-dotenv==1.0.1
+
+# ── HTTP Client (inter-service / tests) ────────────────────────────────────────
+httpx==0.28.1
+
+# ── Testing ────────────────────────────────────────────────────────────────────
+pytest==8.3.4
+pytest-asyncio==0.24.0
