@@ -11,7 +11,7 @@ import { apiPost } from '../api/client';
 const USERNAME_REGEX = /^[a-zA-Z0-9_.@-]{3,64}$/;
 
 const PASSWORD_REGEX =
-  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()\-_=+[\]{};:'",.<>/?\\|`~]).{10,128}$/;
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()\-_=[\]{};:'",.<>/?\\|`~]).{10,128}$/;
 
 interface RegisterResponse {
   message?: string;
@@ -43,7 +43,7 @@ export const RegisterPage: React.FC = () => {
 
     if (!USERNAME_REGEX.test(cleanUsername)) {
       setError(
-        'Username must be 3–64 characters and contain only letters, numbers, underscores, or hyphens.'
+        'Username must be 3–64 characters and contain only letters, numbers, underscores, periods, or hyphens.'
       );
       return;
     }
@@ -55,8 +55,9 @@ export const RegisterPage: React.FC = () => {
 
     if (!PASSWORD_REGEX.test(password)) {
       setError(
-        'Password must be 10–128 characters and contain uppercase and lowercase letters, a number, and a special character.'
+        'Password must be 10–128 characters and contain uppercase, lowercase, a digit, and a special character.'
       );
+      setIsLoading(false);
       return;
     }
 
@@ -126,15 +127,17 @@ export const RegisterPage: React.FC = () => {
             <input
               id="register-username"
               type="text"
+              name="username"
               autoComplete="username"
+              inputMode="text"
               required
               minLength={3}
               maxLength={64}
-              pattern="[a-zA-Z0-9_-]+"
-              title="3–64 characters: letters, numbers, underscores, or hyphens"
+              pattern="[a-zA-Z0-9_.@-]{3,64}"
+              title="3–64 characters: letters, numbers, underscores, periods, or hyphens"
               value={username}
               onChange={(event) => setUsername(event.target.value)}
-              placeholder="e.g. security_lead"
+              placeholder="e.g. jairam200926"
               disabled={isLoading}
               className="w-full px-3.5 py-2.5 rounded-lg bg-vault-950 border border-vault-700 text-slate-100 text-xs font-mono focus:outline-none focus:border-blue-500 disabled:opacity-60"
             />
@@ -219,7 +222,7 @@ export const RegisterPage: React.FC = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-xs flex items-center justify-center space-x-2 shadow-glow-sm transition-all"
+            className="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-xs flex items-center justify-center space-x-2"
           >
             {isLoading ? (
               <>
