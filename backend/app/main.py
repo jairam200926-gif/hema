@@ -49,11 +49,18 @@ async def lifespan(app: FastAPI):
         settings.ENVIRONMENT,
     )
 
+    # Prototype schema bootstrap: the repository currently has no Alembic revisions.
+    # create_all() creates missing tables and leaves existing tables intact; use formal
+    # migrations for future schema changes.
+    try:
+        create_tables()
+        logger.info("Database tables verified / created.")
+    except Exception:
+        logger.exception("Database schema initialization failed.")
+        raise
+
     if settings.ENVIRONMENT == "development":
         try:
-            create_tables()
-            logger.info("Database tables verified / created.")
-
             # Seed default custodians if none exist
             from app.core.database import SessionLocal
             from app.models.custodian import Custodian
