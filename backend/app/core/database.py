@@ -68,9 +68,18 @@ def get_db() -> Generator[Session, None, None]:
 
 
 def create_tables() -> None:
-    """Create ORM tables for development/testing only."""
+    """Create missing ORM tables, serializing PostgreSQL startup across instances."""
     from app import models  # noqa: F401
-    Base.metadata.create_all(bind=engine)
+
+    if url.get_backend_name() == "postgresql":
+        # Multiple Vercel instances can cold-start concurrently. SQLAlchemy's
+        # check-then-create logic for PostgreSQL enum types is not atomic, so
+        # serialize schema bootstrap with a transaction-scoped advisory lock.
+        with engine.begin() as connection:
+            connection.execute(text("SELECT pg_advisory_xact_lock(734291, 9201)"))
+            Base.metadata.create_all(bind=connection)
+    else:
+        Base.metadata.create_all(bind=engine)
 
 
 def check_db_connection() -> bool:
