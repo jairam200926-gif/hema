@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { apiPost } from '../api/client';
 
-const USERNAME_REGEX = /^[a-zA-Z0-9_-]{3,64}$/;
+const USERNAME_REGEX = /^[a-zA-Z0-9_.@-]{3,64}$/;
 
 const PASSWORD_REGEX =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()\-_=+[\]{};:'",.<>/?\\|`~]).{10,128}$/;
