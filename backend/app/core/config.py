@@ -39,6 +39,7 @@ class Settings(BaseSettings):
         "http://localhost:3000",
         "http://127.0.0.1:5173",
         "https://hema-smdr4skgd-tesla-webdevelopment.vercel.app",
+        "https://hema-lac.vercel.app",
     ]
 
     DATABASE_URL: str | None = None
