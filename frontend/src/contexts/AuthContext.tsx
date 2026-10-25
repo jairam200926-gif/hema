@@ -9,6 +9,7 @@ import React, {
 
 import {
   apiGet,
+  authHeader,
   getStoredToken,
   setStoredToken,
 } from "../api/client";
@@ -133,7 +134,9 @@ export const AuthProvider: React.FC<{
     }
 
     try {
-      const profile = await apiGet<any>("/auth/me", activeToken);
+      const profile = await apiGet<any>("/auth/me", {
+        headers: authHeader(activeToken),
+      });
 
       if (!profile || profile.id == null) {
         throw new Error(
@@ -225,10 +228,9 @@ export const AuthProvider: React.FC<{
       setIsLoading(true);
 
       try {
-        const profile = await apiGet<any>(
-          "/auth/me",
-          newToken
-        );
+        const profile = await apiGet<any>("/auth/me", {
+          headers: authHeader(newToken),
+        });
 
         if (!profile || profile.id == null) {
           throw new Error(
