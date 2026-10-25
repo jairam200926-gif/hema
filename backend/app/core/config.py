@@ -51,6 +51,22 @@ class Settings(BaseSettings):
 
     AES_MASTER_KEY_HEX: str = DEV_DEFAULT_AES_KEY_HEX
 
+    # Argon2id password-hashing parameters used by app/crypto/hashing.py.
+    ARGON2_TIME_COST: int = 3
+    ARGON2_MEMORY_COST_KIB: int = 65536
+    ARGON2_PARALLELISM: int = 1
+    ARGON2_HASH_LENGTH: int = 32
+
+    @property
+    def AES_MASTER_KEY_BYTES(self) -> bytes:
+        """Return the configured AES-256 master key as 32 raw bytes."""
+        return bytes.fromhex(self.AES_MASTER_KEY_HEX)
+
+    @property
+    def AES_MASTER_KEY(self) -> bytes:
+        """Backward-compatible property for crypto modules using the raw key."""
+        return self.AES_MASTER_KEY_BYTES
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def parse_cors_origins(cls, value):
