@@ -1,17 +1,8 @@
-"""
-VaultGuard application settings.
-
-Production deployments must explicitly provide:
-- ENVIRONMENT=production
-- DATABASE_URL for a reachable hosted PostgreSQL database
-- JWT_SECRET_KEY (at least 32 characters, generated securely)
-- AES_MASTER_KEY_HEX (64 hexadecimal characters, generated securely)
-"""
 from functools import lru_cache
+import json
 import os
 import pathlib
 import re
-from urllib.parse import quote
 
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -43,7 +34,13 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     RECOVERY_REQUEST_TTL_MINUTES: int = 15
 
-    # Pydantic Settings reads DATABASE_URL from the environment automatically.
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "https://hema-smdr4skgd-tesla-webdevelopment.vercel.app",
+    ]
+
     DATABASE_URL: str | None = None
 
     POSTGRES_USER: str = "vaultguard"
@@ -53,6 +50,27 @@ class Settings(BaseSettings):
     POSTGRES_DB: str = "vaultguard_db"
 
     AES_MASTER_KEY_HEX: str = DEV_DEFAULT_AES_KEY_HEX
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, value):
+        if value is None:
+            return []
+        if isinstance(value, str):
+            raw = value.strip()
+            if not raw:
+                return []
+            if raw.startswith("["):
+                try:
+                    parsed = json.loads(raw)
+                except json.JSONDecodeError:
+                    parsed = None
+                if isinstance(parsed, list):
+                    return [str(item).strip() for item in parsed if str(item).strip()]
+            return [item.strip() for item in raw.replace(" ", "").split(",") if item.strip()]
+        if isinstance(value, list):
+            return [str(item).strip() for item in value if str(item).strip()]
+        return [str(value).strip()]
 
     @field_validator("ENVIRONMENT")
     @classmethod
@@ -67,14 +85,11 @@ class Settings(BaseSettings):
     def validate_master_key_format(cls, value: str) -> str:
         cleaned = value.strip().lower()
         if not HEX_KEY_PATTERN.fullmatch(cleaned):
-            raise ValueError(
-                "AES_MASTER_KEY_HEX must be exactly 64 hexadecimal characters."
-            )
+            raise ValueError("AES_MASTER_KEY_HEX must be exactly 64 hexadecimal characters.")
         return cleaned
 
     @model_validator(mode="after")
     def validate_and_resolve_configuration(self) -> "Settings":
-        # Support older deployments that used AES_MASTER_KEY for the hex value.
         legacy_key = os.getenv("AES_MASTER_KEY")
         if legacy_key and not os.getenv("AES_MASTER_KEY_HEX"):
             cleaned = legacy_key.strip().lower()
@@ -90,7 +105,14 @@ class Settings(BaseSettings):
                     "Set it to your hosted PostgreSQL connection URL."
                 )
 
-        # Providers sometimes supply postgres://; SQLAlchemy expects postgresql://.
         url = self.DATABASE_URL.strip()
         if url.startswith("postgres://"):
             url = "postgresql://" + url[len("postgres://"):]
+        self.DATABASE_URL = url
+
+        return self
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
